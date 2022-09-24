@@ -60,6 +60,7 @@ resource "aws_security_group" "prod_web" {
   }
 }
 
+/*
 resource "aws_instance" "prod_web" {
   count = 2
 
@@ -75,6 +76,7 @@ resource "aws_instance" "prod_web" {
   }
 }
 
+
 resource "aws_eip_association" "prod_web" {
   instance_id = aws_instance.prod_web.0.id #references one instance
   allocation_id = aws_eip.prod_web.id
@@ -85,10 +87,11 @@ resource "aws_eip" "prod_web" {
     "Terraform" : "true"
   }
 }
+*/
 
 resource "aws_elb" "prod_web" { #classic ELB
   name = "prod-web"
-  instances = aws_instance.prod_web.*.id
+  #instances = aws_instance.prod_web.*.id
   subnets = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]
   security_groups = [aws_security_group.prod_web.id]
 
@@ -102,4 +105,37 @@ resource "aws_elb" "prod_web" { #classic ELB
   tags = {
     "Terraform" : "true"
   }
+}
+
+resource "aws_launch_template" "prod_web" {
+  name_prefix   = "prod-web"
+  image_id      = "ami-075d1bca6bb7d32bc"
+  instance_type = "t2.micro"
+  tags = {
+    "Terraform" : "true"
+  }
+}
+
+resource "aws_autoscaling_group" "prod_web" {
+  availability_zones = ["us-east-1a", "us-east-1b"]
+  #vpc_zone_identifier = [aws_default_subnet.default_az1.id, aws_default_subnet.default_az2.id]
+  desired_capacity   = 1
+  max_size           = 1
+  min_size           = 1
+
+  launch_template {
+    id      = aws_launch_template.prod_web.id
+    version = "$Latest"
+  }
+  tag {
+    key = "Terraform"
+    value = "true"
+    propagate_at_launch = true #assign when a new instance is launched 
+  }
+}
+
+# Create a new load balancer attachment
+resource "aws_autoscaling_attachment" "prod_web" {
+  autoscaling_group_name = aws_autoscaling_group.prod_web.id
+  elb                    = aws_elb.prod_web.id
 }
