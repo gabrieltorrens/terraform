@@ -1,3 +1,4 @@
+#Creates various AWS resoures including an EC2 with accessible SSH. Don't run this as is.
 variable "whitelist" {
   type = list(string)
 }
